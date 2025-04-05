@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from '@/components/ui/card';
 import { BookUser, QrCode, Bell } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface Student {
   id: string;
@@ -19,6 +20,7 @@ interface Student {
   grade?: string;
   parent?: string;
   phone?: string;
+  photoUrl?: string;
 }
 
 interface StudentProfileModalProps {
@@ -31,11 +33,27 @@ interface StudentProfileModalProps {
 const StudentProfileModal = ({ isOpen, onOpenChange, student, onShowQR }: StudentProfileModalProps) => {
   if (!student) return null;
 
+  // Function to generate avatar initials from name
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Perfil del Estudiante</DialogTitle>
+          <div className="flex items-center space-x-4">
+            <Avatar className="h-16 w-16 border-2 border-gray-200">
+              <AvatarImage src={student.photoUrl} alt={student.name} />
+              <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
+            </Avatar>
+            <DialogTitle>Perfil del Estudiante</DialogTitle>
+          </div>
         </DialogHeader>
         
         <Tabs defaultValue="info" className="w-full">

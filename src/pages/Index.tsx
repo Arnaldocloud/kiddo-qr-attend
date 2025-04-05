@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle2, QrCode, History } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // Mock student database for demo
 const mockStudentDB = {
@@ -15,7 +16,9 @@ const mockStudentDB = {
     name: 'Carlos Pérez',
     grade: '9no A',
     parent: 'Juan Pérez',
-    phone: '+584141234567'
+    phone: '+584141234567',
+    // Add photo URL for the student
+    photoUrl: 'https://images.unsplash.com/photo-1501286353178-1ec871214838'
   }
 };
 
@@ -27,8 +30,8 @@ const Index = () => {
   
   // Recent scans for the mock UI
   const [recentScans] = useState([
-    { id: 'STUDENT-456', name: 'María Gómez', grade: '9no A', timestamp: new Date(Date.now() - 1000 * 60 * 15) }, // 15 mins ago
-    { id: 'STUDENT-789', name: 'Luis Rodríguez', grade: '8vo B', timestamp: new Date(Date.now() - 1000 * 60 * 22) }, // 22 mins ago
+    { id: 'STUDENT-456', name: 'María Gómez', grade: '9no A', timestamp: new Date(Date.now() - 1000 * 60 * 15), photoUrl: 'https://images.unsplash.com/photo-1535268647677-300dbf3d78d1' }, // 15 mins ago
+    { id: 'STUDENT-789', name: 'Luis Rodríguez', grade: '8vo B', timestamp: new Date(Date.now() - 1000 * 60 * 22), photoUrl: 'https://images.unsplash.com/photo-1582562124811-c09040d0a901' }, // 22 mins ago
     { id: 'STUDENT-234', name: 'Ana Martínez', grade: '8vo B', timestamp: new Date(Date.now() - 1000 * 60 * 35) }, // 35 mins ago
   ]);
 
@@ -48,6 +51,16 @@ const Index = () => {
       hour: '2-digit', 
       minute: '2-digit' 
     });
+  };
+
+  // Function to generate avatar initials from name
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
   };
 
   return (
@@ -90,22 +103,22 @@ const Index = () => {
                   <div className="space-y-6">
                     <Card>
                       <CardHeader>
-                        <CardTitle>Información del Estudiante</CardTitle>
-                        <CardDescription>Detalles del estudiante escaneado</CardDescription>
+                        <div className="flex items-center space-x-4">
+                          <Avatar className="h-16 w-16 border-2 border-gray-200">
+                            <AvatarImage src={mockStudentDB[lastScanned.studentId].photoUrl} alt={mockStudentDB[lastScanned.studentId].name} />
+                            <AvatarFallback>{getInitials(mockStudentDB[lastScanned.studentId].name)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <CardTitle>{mockStudentDB[lastScanned.studentId].name}</CardTitle>
+                            <CardDescription>{mockStudentDB[lastScanned.studentId].grade}</CardDescription>
+                          </div>
+                        </div>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2">
                           <div className="flex justify-between">
-                            <span className="font-medium text-muted-foreground">Nombre:</span>
-                            <span>{mockStudentDB[lastScanned.studentId].name}</span>
-                          </div>
-                          <div className="flex justify-between">
                             <span className="font-medium text-muted-foreground">ID:</span>
                             <span>{mockStudentDB[lastScanned.studentId].id}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="font-medium text-muted-foreground">Grado:</span>
-                            <span>{mockStudentDB[lastScanned.studentId].grade}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="font-medium text-muted-foreground">Representante:</span>
@@ -146,6 +159,10 @@ const Index = () => {
                       <div className="space-y-4">
                         {recentScans.map((scan, index) => (
                           <div key={index} className="flex items-center p-3 rounded-md border hover:bg-gray-50 transition-colors">
+                            <Avatar className="h-10 w-10 mr-3">
+                              <AvatarImage src={scan.photoUrl} alt={scan.name} />
+                              <AvatarFallback>{getInitials(scan.name)}</AvatarFallback>
+                            </Avatar>
                             <div className="flex-grow">
                               <p className="font-medium">{scan.name}</p>
                               <div className="flex items-center text-sm text-muted-foreground">
