@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Search, Plus, FileDown, QrCode, UserPlus, Filter } from 'lucide-react';
+import { Search, Plus, FileDown, QrCode, UserPlus, Filter, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,10 +13,12 @@ import {
   TableCell 
 } from '@/components/ui/table';
 import QRModal from './QRModal';
+import NewStudentModal from './NewStudentModal';
+import StudentProfileModal from './StudentProfileModal';
 import { useToast } from '@/hooks/use-toast';
 
 // Mock data for students
-const mockStudents = [
+const initialStudents = [
   { id: 'STUDENT-123', name: 'Carlos Pérez', grade: '9no A', parent: 'Juan Pérez', phone: '+584141234567' },
   { id: 'STUDENT-456', name: 'María Gómez', grade: '9no A', parent: 'Ana Gómez', phone: '+584142345678' },
   { id: 'STUDENT-789', name: 'Luis Rodríguez', grade: '8vo B', parent: 'Pedro Rodríguez', phone: '+584143456789' },
@@ -25,20 +27,32 @@ const mockStudents = [
 ];
 
 const StudentList = () => {
+  const [students, setStudents] = useState(initialStudents);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStudent, setSelectedStudent] = useState<typeof mockStudents[0] | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<typeof initialStudents[0] | null>(null);
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+  const [isNewStudentModalOpen, setIsNewStudentModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const { toast } = useToast();
   
-  const filteredStudents = mockStudents.filter(student => 
+  const filteredStudents = students.filter(student => 
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.grade.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.parent.toLowerCase().includes(searchTerm.toLowerCase())
+    student.grade?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.parent?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleShowQR = (student: typeof mockStudents[0]) => {
+  const handleShowQR = (student: typeof initialStudents[0]) => {
     setSelectedStudent(student);
     setIsQRModalOpen(true);
+  };
+
+  const handleShowProfile = (student: typeof initialStudents[0]) => {
+    setSelectedStudent(student);
+    setIsProfileModalOpen(true);
+  };
+
+  const handleAddStudent = (newStudent: typeof initialStudents[0]) => {
+    setStudents((prevStudents) => [...prevStudents, newStudent]);
   };
 
   const generateAllQRs = () => {
@@ -66,7 +80,12 @@ const StudentList = () => {
             <QrCode className="h-4 w-4 mr-1" />
             Generar QRs
           </Button>
-          <Button size="sm" variant="default" className="bg-kiddo-blue hover:bg-blue-700">
+          <Button 
+            size="sm" 
+            variant="default" 
+            className="bg-kiddo-blue hover:bg-blue-700"
+            onClick={() => setIsNewStudentModalOpen(true)}
+          >
             <UserPlus className="h-4 w-4 mr-1" />
             Nuevo Estudiante
           </Button>
@@ -112,20 +131,34 @@ const StudentList = () => {
                 filteredStudents.map((student) => (
                   <TableRow key={student.id}>
                     <TableCell className="font-medium">{student.id}</TableCell>
-                    <TableCell>{student.name}</TableCell>
+                    <TableCell>
+                      <Button 
+                        variant="link" 
+                        className="p-0 h-auto font-normal text-left"
+                        onClick={() => handleShowProfile(student)}
+                      >
+                        {student.name}
+                      </Button>
+                    </TableCell>
                     <TableCell>{student.grade}</TableCell>
                     <TableCell>{student.parent}</TableCell>
                     <TableCell>{student.phone}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm">
-                          Editar
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleShowProfile(student)}
+                        >
+                          <User className="h-4 w-4 mr-1" />
+                          Perfil
                         </Button>
                         <Button 
                           variant="outline" 
                           size="sm"
                           onClick={() => handleShowQR(student)}
                         >
+                          <QrCode className="h-4 w-4 mr-1" />
                           QR
                         </Button>
                       </div>
@@ -142,6 +175,19 @@ const StudentList = () => {
         isOpen={isQRModalOpen} 
         onOpenChange={setIsQRModalOpen} 
         student={selectedStudent}
+      />
+
+      <NewStudentModal
+        isOpen={isNewStudentModalOpen}
+        onOpenChange={setIsNewStudentModalOpen}
+        onStudentAdded={handleAddStudent}
+      />
+
+      <StudentProfileModal
+        isOpen={isProfileModalOpen}
+        onOpenChange={setIsProfileModalOpen}
+        student={selectedStudent}
+        onShowQR={handleShowQR}
       />
     </Card>
   );
