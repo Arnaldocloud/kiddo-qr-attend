@@ -12,24 +12,42 @@ import {
   TableHead, 
   TableCell 
 } from '@/components/ui/table';
+import QRModal from './QRModal';
+import { useToast } from '@/hooks/use-toast';
 
 // Mock data for students
 const mockStudents = [
-  { id: '001', name: 'Carlos Pérez', grade: '9no A', parent: 'Juan Pérez', phone: '+584141234567' },
-  { id: '002', name: 'María Gómez', grade: '9no A', parent: 'Ana Gómez', phone: '+584142345678' },
-  { id: '003', name: 'Luis Rodríguez', grade: '8vo B', parent: 'Pedro Rodríguez', phone: '+584143456789' },
-  { id: '004', name: 'Ana Martínez', grade: '8vo B', parent: 'Laura Martínez', phone: '+584144567890' },
-  { id: '005', name: 'Jorge Fernández', grade: '7mo C', parent: 'Rosa Fernández', phone: '+584145678901' },
+  { id: 'STUDENT-123', name: 'Carlos Pérez', grade: '9no A', parent: 'Juan Pérez', phone: '+584141234567' },
+  { id: 'STUDENT-456', name: 'María Gómez', grade: '9no A', parent: 'Ana Gómez', phone: '+584142345678' },
+  { id: 'STUDENT-789', name: 'Luis Rodríguez', grade: '8vo B', parent: 'Pedro Rodríguez', phone: '+584143456789' },
+  { id: 'STUDENT-101', name: 'Ana Martínez', grade: '8vo B', parent: 'Laura Martínez', phone: '+584144567890' },
+  { id: 'STUDENT-112', name: 'Jorge Fernández', grade: '7mo C', parent: 'Rosa Fernández', phone: '+584145678901' },
 ];
 
 const StudentList = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState<typeof mockStudents[0] | null>(null);
+  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+  const { toast } = useToast();
   
   const filteredStudents = mockStudents.filter(student => 
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.grade.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.parent.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleShowQR = (student: typeof mockStudents[0]) => {
+    setSelectedStudent(student);
+    setIsQRModalOpen(true);
+  };
+
+  const generateAllQRs = () => {
+    toast({
+      title: "Generando QRs",
+      description: "Se están generando los QRs para todos los estudiantes",
+    });
+    // In a real application, this would generate all QRs and package them for download
+  };
 
   return (
     <Card className="w-full">
@@ -40,7 +58,11 @@ const StudentList = () => {
             <FileDown className="h-4 w-4 mr-1" />
             Exportar
           </Button>
-          <Button size="sm" variant="outline">
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={generateAllQRs}
+          >
             <QrCode className="h-4 w-4 mr-1" />
             Generar QRs
           </Button>
@@ -99,7 +121,11 @@ const StudentList = () => {
                         <Button variant="outline" size="sm">
                           Editar
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleShowQR(student)}
+                        >
                           QR
                         </Button>
                       </div>
@@ -111,6 +137,12 @@ const StudentList = () => {
           </Table>
         </div>
       </CardContent>
+      
+      <QRModal 
+        isOpen={isQRModalOpen} 
+        onOpenChange={setIsQRModalOpen} 
+        student={selectedStudent}
+      />
     </Card>
   );
 };

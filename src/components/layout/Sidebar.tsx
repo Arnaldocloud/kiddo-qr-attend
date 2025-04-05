@@ -21,6 +21,7 @@ const Sidebar = () => {
     { icon: Home, label: 'Dashboard', path: '/dashboard' },
     { icon: Users, label: 'Estudiantes', path: '/students' },
     { icon: QrCode, label: 'Escáner QR', path: '/' },
+    { icon: QrCode, label: 'Códigos QR', path: '/qrcodes' },
     { icon: Calendar, label: 'Asistencias', path: '/attendance' },
     { icon: Settings, label: 'Configuración', path: '/settings' },
   ];

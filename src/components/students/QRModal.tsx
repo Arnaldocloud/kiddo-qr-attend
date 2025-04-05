@@ -1,0 +1,60 @@
+
+import React from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import QRGenerator from '@/components/qr/QRGenerator';
+
+interface Student {
+  id: string;
+  name: string;
+  grade?: string;
+  parent?: string;
+  phone?: string;
+}
+
+interface QRModalProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  student: Student | null;
+}
+
+const QRModal = ({ isOpen, onOpenChange, student }: QRModalProps) => {
+  if (!student) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Código QR del Estudiante</DialogTitle>
+          <DialogDescription>
+            Este código QR puede ser utilizado para registrar la asistencia del estudiante.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
+          <QRGenerator 
+            studentId={student.id} 
+            studentName={student.name} 
+          />
+        </div>
+        <DialogFooter className="sm:justify-center">
+          <DialogClose asChild>
+            <Button variant="outline">Cerrar</Button>
+          </DialogClose>
+          <Button type="button" className="bg-kiddo-blue hover:bg-blue-700">
+            Imprimir
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default QRModal;
