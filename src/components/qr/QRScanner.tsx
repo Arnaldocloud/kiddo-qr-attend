@@ -3,7 +3,7 @@ import { QrCode, AlertCircle, Camera } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { QrReader } from 'react-qr-reader';
+import { QrScanner } from 'react-qr-scanner';
 import { supabase } from '@/integrations/supabase/client';
 
 interface QRScannerProps {
@@ -104,7 +104,7 @@ const QRScanner = ({ onScan }: QRScannerProps) => {
           <div className="relative w-64 h-64 mb-4 border-2 border-dashed border-gray-300 rounded-md overflow-hidden">
             {scanning ? (
               <div className="absolute inset-0 bg-gray-100">
-                <QrReader
+                <QrScanner
                   onResult={handleScan}
                   onError={handleError}
                   constraints={{ facingMode: "environment" }}
