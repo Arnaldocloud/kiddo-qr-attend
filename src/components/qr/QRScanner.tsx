@@ -10,15 +10,16 @@ import { supabase } from '@/integrations/supabase/client';
 interface QRScannerProps {
   onScan?: (data: string) => void;
 }
-
+const [hasScanned, setHasScanned] = useState(false);
 const QRScanner = ({ onScan }: QRScannerProps) => {
   const [scanning, setScanning] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const { toast } = useToast();
   
   const handleScan = async (result: any) => {
-    if (!result || !result.text) return;
+    if (!result || !result.text || hasScanned) return;
     
+    setHasScanned(true); // evita que vuelva a escanear
     const scannedData = result.text;
     console.log('QR escaneado:', scannedData);
     
@@ -66,6 +67,11 @@ const QRScanner = ({ onScan }: QRScannerProps) => {
         
         if (onScan) {
           onScan(scannedData);
+
+          setTimeout(() => {
+            stopScanner(); // Detiene el escáner
+          }, 1000);
+          
         }
       } else {
         toast({
@@ -92,6 +98,7 @@ const QRScanner = ({ onScan }: QRScannerProps) => {
 
   const startScanner = () => {
     setCameraError(null);
+    setHasScanned(false); // permite nuevo escaneo
     setScanning(true);
   };
   
