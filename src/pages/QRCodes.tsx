@@ -9,13 +9,47 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Download, Printer, QrCode, Search } from 'lucide-react';
 import QRGenerator from '@/components/qr/QRGenerator';
 
-// Mock data for students
+// Mock data for students with photoUrl
 const mockStudents = [
-  { id: 'STUDENT-123', name: 'Carlos Pérez', grade: '9no A', parent: 'Juan Pérez', phone: '+584141234567' },
-  { id: 'STUDENT-456', name: 'María Gómez', grade: '9no A', parent: 'Ana Gómez', phone: '+584142345678' },
-  { id: 'STUDENT-789', name: 'Luis Rodríguez', grade: '8vo B', parent: 'Pedro Rodríguez', phone: '+584143456789' },
-  { id: 'STUDENT-101', name: 'Ana Martínez', grade: '8vo B', parent: 'Laura Martínez', phone: '+584144567890' },
-  { id: 'STUDENT-112', name: 'Jorge Fernández', grade: '7mo C', parent: 'Rosa Fernández', phone: '+584145678901' },
+  { 
+    id: 'STUDENT-123', 
+    name: 'Carlos Pérez', 
+    grade: '9no A', 
+    parent: 'Juan Pérez', 
+    phone: '+584141234567',
+    photoUrl: 'https://source.unsplash.com/photo-1649972904349-6e44c42644a7/100x100' 
+  },
+  { 
+    id: 'STUDENT-456', 
+    name: 'María Gómez', 
+    grade: '9no A', 
+    parent: 'Ana Gómez', 
+    phone: '+584142345678',
+    photoUrl: 'https://source.unsplash.com/photo-1582562124811-c09040d0a901/100x100' 
+  },
+  { 
+    id: 'STUDENT-789', 
+    name: 'Luis Rodríguez', 
+    grade: '8vo B', 
+    parent: 'Pedro Rodríguez', 
+    phone: '+584143456789',
+    photoUrl: 'https://source.unsplash.com/photo-1535268647677-300dbf3d78d1/100x100' 
+  },
+  { 
+    id: 'STUDENT-101', 
+    name: 'Ana Martínez', 
+    grade: '8vo B', 
+    parent: 'Laura Martínez', 
+    phone: '+584144567890' 
+  },
+  { 
+    id: 'STUDENT-112', 
+    name: 'Jorge Fernández', 
+    grade: '7mo C', 
+    parent: 'Rosa Fernández', 
+    phone: '+584145678901',
+    photoUrl: 'https://source.unsplash.com/photo-1501286353178-1ec881214838/100x100' 
+  },
 ];
 
 const QRCodes = () => {
@@ -69,6 +103,7 @@ const QRCodes = () => {
                       <QRGenerator
                         studentId={student.id}
                         studentName={student.name}
+                        photoUrl={student.photoUrl}
                       />
                     </CardContent>
                   </Card>
@@ -129,6 +164,7 @@ const QRCodes = () => {
                           <QRGenerator
                             studentId={student.id}
                             studentName={student.name}
+                            photoUrl={student.photoUrl}
                           />
                         </CardContent>
                       </Card>

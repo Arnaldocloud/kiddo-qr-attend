@@ -5,15 +5,27 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Check, Clipboard, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface QRGeneratorProps {
   studentId: string;
   studentName: string;
+  photoUrl?: string;
 }
 
-const QRGenerator = ({ studentId, studentName }: QRGeneratorProps) => {
+const QRGenerator = ({ studentId, studentName, photoUrl }: QRGeneratorProps) => {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
+
+  // Function to generate avatar initials from name
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
 
   const downloadQRCode = () => {
     const canvas = document.getElementById('qr-' + studentId) as HTMLCanvasElement;
@@ -71,6 +83,12 @@ const QRGenerator = ({ studentId, studentName }: QRGeneratorProps) => {
         <CardTitle className="text-center">Código QR para {studentName}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col items-center justify-center">
+        <div className="mb-4">
+          <Avatar className="h-24 w-24 mx-auto border-2 border-gray-200">
+            <AvatarImage src={photoUrl} alt={studentName} />
+            <AvatarFallback>{getInitials(studentName)}</AvatarFallback>
+          </Avatar>
+        </div>
         <div className="border-4 border-dashed border-gray-200 p-4 rounded-lg bg-white">
           <QRCodeSVG
             id={`qr-${studentId}`}

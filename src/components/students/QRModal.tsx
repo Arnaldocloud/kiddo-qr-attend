@@ -18,6 +18,7 @@ interface Student {
   grade?: string;
   parent?: string;
   phone?: string;
+  photoUrl?: string;
 }
 
 interface QRModalProps {
@@ -41,7 +42,8 @@ const QRModal = ({ isOpen, onOpenChange, student }: QRModalProps) => {
         <div className="py-4">
           <QRGenerator 
             studentId={student.id} 
-            studentName={student.name} 
+            studentName={student.name}
+            photoUrl={student.photoUrl}
           />
         </div>
         <DialogFooter className="sm:justify-center">
