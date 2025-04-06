@@ -19,11 +19,11 @@ import { useToast } from '@/hooks/use-toast';
 
 // Mock data for students
 const initialStudents = [
-  { id: 'STUDENT-123', name: 'Carlos Pérez', grade: '9no A', parent: 'Juan Pérez', phone: '+584141234567' },
-  { id: 'STUDENT-456', name: 'María Gómez', grade: '9no A', parent: 'Ana Gómez', phone: '+584142345678' },
-  { id: 'STUDENT-789', name: 'Luis Rodríguez', grade: '8vo B', parent: 'Pedro Rodríguez', phone: '+584143456789' },
+  { id: 'STUDENT-123', name: 'Carlos Pérez', grade: '9no A', parent: 'Juan Pérez', phone: '+584141234567', photoUrl: 'https://source.unsplash.com/photo-1649972904349-6e44c42644a7/100x100' },
+  { id: 'STUDENT-456', name: 'María Gómez', grade: '9no A', parent: 'Ana Gómez', phone: '+584142345678', photoUrl: 'https://source.unsplash.com/photo-1582562124811-c09040d0a901/100x100' },
+  { id: 'STUDENT-789', name: 'Luis Rodríguez', grade: '8vo B', parent: 'Pedro Rodríguez', phone: '+584143456789', photoUrl: 'https://source.unsplash.com/photo-1535268647677-300dbf3d78d1/100x100' },
   { id: 'STUDENT-101', name: 'Ana Martínez', grade: '8vo B', parent: 'Laura Martínez', phone: '+584144567890' },
-  { id: 'STUDENT-112', name: 'Jorge Fernández', grade: '7mo C', parent: 'Rosa Fernández', phone: '+584145678901' },
+  { id: 'STUDENT-112', name: 'Jorge Fernández', grade: '7mo C', parent: 'Rosa Fernández', phone: '+584145678901', photoUrl: 'https://source.unsplash.com/photo-1501286353178-1ec881214838/100x100' },
 ];
 
 const StudentList = () => {
@@ -53,6 +53,20 @@ const StudentList = () => {
 
   const handleAddStudent = (newStudent: typeof initialStudents[0]) => {
     setStudents((prevStudents) => [...prevStudents, newStudent]);
+  };
+
+  const handleUpdateStudent = (updatedStudent: typeof initialStudents[0]) => {
+    setStudents((prevStudents) => 
+      prevStudents.map((student) => 
+        student.id === updatedStudent.id ? updatedStudent : student
+      )
+    );
+    setSelectedStudent(updatedStudent);
+    
+    toast({
+      title: "Estudiante actualizado",
+      description: `La información de ${updatedStudent.name} ha sido actualizada`,
+    });
   };
 
   const generateAllQRs = () => {
@@ -188,6 +202,7 @@ const StudentList = () => {
         onOpenChange={setIsProfileModalOpen}
         student={selectedStudent}
         onShowQR={handleShowQR}
+        onUpdateStudent={handleUpdateStudent}
       />
     </Card>
   );
