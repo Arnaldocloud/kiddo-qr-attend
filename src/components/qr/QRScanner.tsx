@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { QrCode, AlertCircle, Camera } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,13 +13,15 @@ interface QRScannerProps {
 const QRScanner = ({ onScan }: QRScannerProps) => {
   const [scanning, setScanning] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [scanned, setScanned] = useState(false); // Nuevo estado para controlar si ya se escaneó
   const { toast } = useToast();
   
   const handleScan = async (result: any) => {
-    if (!result || !result.text) return;
+    if (!result || !result.text || scanned) return; // No hacer nada si ya se escaneó
     
     const scannedData = result.text;
     console.log('QR escaneado:', scannedData);
+    setScanned(true); // Marcar como escaneado
     
     try {
       // Buscar el estudiante en la base de datos por student_code
@@ -67,6 +68,11 @@ const QRScanner = ({ onScan }: QRScannerProps) => {
         if (onScan) {
           onScan(scannedData);
         }
+        
+        // Detener el escaneo después de 2 segundos (opcional)
+        setTimeout(() => {
+          setScanning(false);
+        }, 2000);
       } else {
         toast({
           title: "QR desconocido",
@@ -81,6 +87,11 @@ const QRScanner = ({ onScan }: QRScannerProps) => {
         description: "Ocurrió un error al procesar el código QR",
         variant: "destructive"
       });
+    } finally {
+      // Resetear el estado de escaneado después de un tiempo
+      setTimeout(() => {
+        setScanned(false);
+      }, 3000);
     }
   };
   
@@ -93,10 +104,12 @@ const QRScanner = ({ onScan }: QRScannerProps) => {
   const startScanner = () => {
     setCameraError(null);
     setScanning(true);
+    setScanned(false); // Resetear estado de escaneado al iniciar
   };
   
   const stopScanner = () => {
     setScanning(false);
+    setScanned(false); // Resetear estado de escaneado al detener
   };
 
   useEffect(() => {
