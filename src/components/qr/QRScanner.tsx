@@ -91,7 +91,7 @@ const QRScanner = ({ onScan }: QRScannerProps) => {
       // Resetear el estado de escaneado después de un tiempo
       setTimeout(() => {
         setScanned(false);
-      }, 3000);
+      }, 1000);
     }
   };
   
