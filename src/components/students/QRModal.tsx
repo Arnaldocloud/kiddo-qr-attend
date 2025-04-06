@@ -14,11 +14,12 @@ import QRGenerator from '@/components/qr/QRGenerator';
 
 interface Student {
   id: string;
+  student_code: string;
   name: string;
   grade?: string;
   parent?: string;
   phone?: string;
-  photoUrl?: string;
+  photo_url?: string;
 }
 
 interface QRModalProps {
@@ -41,9 +42,9 @@ const QRModal = ({ isOpen, onOpenChange, student }: QRModalProps) => {
         </DialogHeader>
         <div className="py-4">
           <QRGenerator 
-            studentId={student.id} 
+            studentId={student.student_code} 
             studentName={student.name}
-            photoUrl={student.photoUrl}
+            photoUrl={student.photo_url}
           />
         </div>
         <DialogFooter className="sm:justify-center">

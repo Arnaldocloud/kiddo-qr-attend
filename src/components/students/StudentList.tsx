@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Search, Plus, FileDown, QrCode, UserPlus, Filter, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Plus, FileDown, QrCode, UserPlus, Filter, User, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,24 +16,56 @@ import QRModal from './QRModal';
 import NewStudentModal from './NewStudentModal';
 import StudentProfileModal from './StudentProfileModal';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
-// Mock data for students
-const initialStudents = [
-  { id: 'STUDENT-123', name: 'Carlos Pérez', grade: '9no A', parent: 'Juan Pérez', phone: '+584141234567', photoUrl: 'https://source.unsplash.com/photo-1649972904349-6e44c42644a7/100x100' },
-  { id: 'STUDENT-456', name: 'María Gómez', grade: '9no A', parent: 'Ana Gómez', phone: '+584142345678', photoUrl: 'https://source.unsplash.com/photo-1582562124811-c09040d0a901/100x100' },
-  { id: 'STUDENT-789', name: 'Luis Rodríguez', grade: '8vo B', parent: 'Pedro Rodríguez', phone: '+584143456789', photoUrl: 'https://source.unsplash.com/photo-1535268647677-300dbf3d78d1/100x100' },
-  { id: 'STUDENT-101', name: 'Ana Martínez', grade: '8vo B', parent: 'Laura Martínez', phone: '+584144567890' },
-  { id: 'STUDENT-112', name: 'Jorge Fernández', grade: '7mo C', parent: 'Rosa Fernández', phone: '+584145678901', photoUrl: 'https://source.unsplash.com/photo-1501286353178-1ec881214838/100x100' },
-];
+// Definición del tipo para estudiantes
+interface Student {
+  id: string;
+  student_code: string;
+  name: string;
+  grade?: string;
+  parent?: string;
+  phone?: string;
+  photo_url?: string;
+}
 
 const StudentList = () => {
-  const [students, setStudents] = useState(initialStudents);
+  const [students, setStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStudent, setSelectedStudent] = useState<typeof initialStudents[0] | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [isNewStudentModalOpen, setIsNewStudentModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  
+  // Cargar estudiantes desde Supabase
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('students')
+          .select('*')
+          .order('name');
+          
+        if (error) throw error;
+        
+        setStudents(data || []);
+      } catch (error) {
+        console.error('Error al cargar los estudiantes:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los estudiantes",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStudents();
+  }, [toast]);
   
   const filteredStudents = students.filter(student => 
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -41,32 +73,77 @@ const StudentList = () => {
     student.parent?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleShowQR = (student: typeof initialStudents[0]) => {
+  const handleShowQR = (student: Student) => {
     setSelectedStudent(student);
     setIsQRModalOpen(true);
   };
 
-  const handleShowProfile = (student: typeof initialStudents[0]) => {
+  const handleShowProfile = (student: Student) => {
     setSelectedStudent(student);
     setIsProfileModalOpen(true);
   };
 
-  const handleAddStudent = (newStudent: typeof initialStudents[0]) => {
-    setStudents((prevStudents) => [...prevStudents, newStudent]);
+  const handleAddStudent = async (newStudent: Omit<Student, 'id'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .insert([newStudent])
+        .select();
+      
+      if (error) throw error;
+      
+      if (data && data[0]) {
+        setStudents((prevStudents) => [...prevStudents, data[0]]);
+        
+        toast({
+          title: "Estudiante agregado",
+          description: `${newStudent.name} ha sido agregado exitosamente.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error al agregar el estudiante:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo agregar el estudiante",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleUpdateStudent = (updatedStudent: typeof initialStudents[0]) => {
-    setStudents((prevStudents) => 
-      prevStudents.map((student) => 
-        student.id === updatedStudent.id ? updatedStudent : student
-      )
-    );
-    setSelectedStudent(updatedStudent);
-    
-    toast({
-      title: "Estudiante actualizado",
-      description: `La información de ${updatedStudent.name} ha sido actualizada`,
-    });
+  const handleUpdateStudent = async (updatedStudent: Student) => {
+    try {
+      const { error } = await supabase
+        .from('students')
+        .update({
+          name: updatedStudent.name,
+          grade: updatedStudent.grade,
+          parent: updatedStudent.parent,
+          phone: updatedStudent.phone,
+          photo_url: updatedStudent.photo_url
+        })
+        .eq('id', updatedStudent.id);
+      
+      if (error) throw error;
+      
+      setStudents((prevStudents) => 
+        prevStudents.map((student) => 
+          student.id === updatedStudent.id ? updatedStudent : student
+        )
+      );
+      setSelectedStudent(updatedStudent);
+      
+      toast({
+        title: "Estudiante actualizado",
+        description: `La información de ${updatedStudent.name} ha sido actualizada`,
+      });
+    } catch (error) {
+      console.error('Error al actualizar el estudiante:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el estudiante",
+        variant: "destructive",
+      });
+    }
   };
 
   const generateAllQRs = () => {
@@ -74,7 +151,7 @@ const StudentList = () => {
       title: "Generando QRs",
       description: "Se están generando los QRs para todos los estudiantes",
     });
-    // In a real application, this would generate all QRs and package them for download
+    // En una aplicación real, esto generaría todos los QRs y los empaquetaría para descargar
   };
 
   return (
@@ -135,7 +212,16 @@ const StudentList = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredStudents.length === 0 ? (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    <div className="flex justify-center items-center">
+                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                      <span>Cargando estudiantes...</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : filteredStudents.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     No se encontraron estudiantes
@@ -144,7 +230,7 @@ const StudentList = () => {
               ) : (
                 filteredStudents.map((student) => (
                   <TableRow key={student.id}>
-                    <TableCell className="font-medium">{student.id}</TableCell>
+                    <TableCell className="font-medium">{student.student_code}</TableCell>
                     <TableCell>
                       <Button 
                         variant="link" 

@@ -17,11 +17,12 @@ import EditStudentForm from './EditStudentForm';
 
 interface Student {
   id: string;
+  student_code: string;
   name: string;
   grade?: string;
   parent?: string;
   phone?: string;
-  photoUrl?: string;
+  photo_url?: string;
 }
 
 interface StudentProfileModalProps {
@@ -70,7 +71,7 @@ const StudentProfileModal = ({
         <DialogHeader>
           <div className="flex items-center space-x-4">
             <Avatar className="h-16 w-16 border-2 border-gray-200">
-              <AvatarImage src={student.photoUrl} alt={student.name} />
+              <AvatarImage src={student.photo_url} alt={student.name} />
               <AvatarFallback>{getInitials(student.name)}</AvatarFallback>
             </Avatar>
             <DialogTitle>Perfil del Estudiante</DialogTitle>
@@ -107,7 +108,7 @@ const StudentProfileModal = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <p className="text-sm font-medium mb-1 text-gray-500">ID de Estudiante</p>
-                        <p className="font-semibold">{student.id}</p>
+                        <p className="font-semibold">{student.student_code}</p>
                       </div>
                       <div>
                         <p className="text-sm font-medium mb-1 text-gray-500">Nombre Completo</p>

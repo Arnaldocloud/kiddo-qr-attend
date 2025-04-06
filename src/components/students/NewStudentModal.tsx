@@ -22,19 +22,21 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
+const generateStudentCode = () => {
+  return `STUDENT-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+};
+
 const formSchema = z.object({
+  student_code: z.string().min(1, {
+    message: "El código del estudiante es requerido.",
+  }),
   name: z.string().min(2, {
     message: "El nombre debe tener al menos 2 caracteres.",
   }),
-  grade: z.string().min(1, {
-    message: "El grado es requerido.",
-  }),
-  parent: z.string().min(2, {
-    message: "El nombre del representante es requerido.",
-  }),
-  phone: z.string().min(10, {
-    message: "El teléfono debe tener al menos 10 caracteres.",
-  }),
+  grade: z.string().optional(),
+  parent: z.string().optional(),
+  phone: z.string().optional(),
+  photo_url: z.string().optional(),
 });
 
 interface NewStudentModalProps {
@@ -49,27 +51,25 @@ const NewStudentModal = ({ isOpen, onOpenChange, onStudentAdded }: NewStudentMod
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      student_code: generateStudentCode(),
       name: "",
       grade: "",
       parent: "",
       phone: "",
+      photo_url: "",
     },
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    // Generate a simple ID for the new student
-    const newStudent = {
-      id: `STUDENT-${Math.floor(Math.random() * 1000)}`,
-      ...values
-    };
-
-    // In a real app, you would save this to a database
-    onStudentAdded(newStudent);
-    toast({
-      title: "Estudiante agregado",
-      description: `${values.name} ha sido agregado exitosamente.`,
+    onStudentAdded(values);
+    form.reset({
+      student_code: generateStudentCode(),
+      name: "",
+      grade: "",
+      parent: "",
+      phone: "",
+      photo_url: "",
     });
-    form.reset();
     onOpenChange(false);
   };
 
@@ -81,6 +81,20 @@ const NewStudentModal = ({ isOpen, onOpenChange, onStudentAdded }: NewStudentMod
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="student_code"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Código del Estudiante</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ej: STUDENT-0001" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="name"
@@ -131,6 +145,20 @@ const NewStudentModal = ({ isOpen, onOpenChange, onStudentAdded }: NewStudentMod
                   <FormLabel>Teléfono</FormLabel>
                   <FormControl>
                     <Input placeholder="Ej: +584141234567" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="photo_url"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>URL de la Foto</FormLabel>
+                  <FormControl>
+                    <Input placeholder="https://..." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

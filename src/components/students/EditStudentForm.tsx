@@ -18,11 +18,12 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface Student {
   id: string;
+  student_code: string;
   name: string;
   grade?: string;
   parent?: string;
   phone?: string;
-  photoUrl?: string;
+  photo_url?: string;
 }
 
 interface EditStudentFormProps {
@@ -36,7 +37,7 @@ const formSchema = z.object({
   grade: z.string().optional(),
   parent: z.string().optional(),
   phone: z.string().optional(),
-  photoUrl: z.string().optional(),
+  photo_url: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -51,7 +52,7 @@ const EditStudentForm = ({ student, onSubmit, onCancel }: EditStudentFormProps) 
       grade: student.grade || '',
       parent: student.parent || '',
       phone: student.phone || '',
-      photoUrl: student.photoUrl || '',
+      photo_url: student.photo_url || '',
     },
   });
 
@@ -84,14 +85,14 @@ const EditStudentForm = ({ student, onSubmit, onCancel }: EditStudentFormProps) 
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <div className="flex justify-center mb-4">
           <Avatar className="h-24 w-24 border-2 border-gray-200">
-            <AvatarImage src={form.watch('photoUrl')} alt={form.watch('name')} />
+            <AvatarImage src={form.watch('photo_url')} alt={form.watch('name')} />
             <AvatarFallback>{getInitials(form.watch('name'))}</AvatarFallback>
           </Avatar>
         </div>
         
         <FormField
           control={form.control}
-          name="photoUrl"
+          name="photo_url"
           render={({ field }) => (
             <FormItem>
               <FormLabel>URL de la Foto</FormLabel>
