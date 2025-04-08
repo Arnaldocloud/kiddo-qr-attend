@@ -9,18 +9,24 @@ import { supabase } from '@/integrations/supabase/client';
 interface QRScannerProps {
   onScan?: (data: string) => void;
 }
-
+const [hasScanned, setHasScanned] = useState(false);
 const QRScanner = ({ onScan }: QRScannerProps) => {
   const [scanning, setScanning] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const { toast } = useToast();
   
   const handleScan = async (result: any) => {
+<<<<<<< HEAD
     if (!result || !result.text || !scanning) return;
     
     // Detener el escáner inmediatamente
     setScanning(false);
 
+=======
+    if (!result || !result.text || hasScanned) return;
+    
+    setHasScanned(true); // evita que vuelva a escanear
+>>>>>>> parent of 7243955 (repara el escaner)
     const scannedData = result.text;
     console.log('QR escaneado:', scannedData);
     
@@ -64,7 +70,18 @@ const QRScanner = ({ onScan }: QRScannerProps) => {
           description: `Se ha registrado la asistencia de ${studentData.name}`,
         });
         
+<<<<<<< HEAD
         if (onScan) onScan(scannedData);
+=======
+        if (onScan) {
+          onScan(scannedData);
+
+          setTimeout(() => {
+            stopScanner(); // Detiene el escáner
+          }, 1000);
+          
+        }
+>>>>>>> parent of 7243955 (repara el escaner)
       } else {
         toast({
           title: "QR desconocido",
@@ -90,6 +107,7 @@ const QRScanner = ({ onScan }: QRScannerProps) => {
 
   const startScanner = () => {
     setCameraError(null);
+    setHasScanned(false); // permite nuevo escaneo
     setScanning(true);
   };
   
