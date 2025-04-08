@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { QrCode, AlertCircle, Camera } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { QrScanner } from 'react-qr-scanner';
+import { QrReader } from 'react-qr-reader';
 import { supabase } from '@/integrations/supabase/client';
 
 interface QRScannerProps {
@@ -16,16 +17,13 @@ const QRScanner = ({ onScan }: QRScannerProps) => {
   const { toast } = useToast();
   
   const handleScan = async (result: any) => {
-    if (!result || !result.text || !scanning) return;
+    if (!result || !result.text) return;
     
-    // Detener el escáner inmediatamente
-    setScanning(false);
-
     const scannedData = result.text;
     console.log('QR escaneado:', scannedData);
     
     try {
-      // Buscar el estudiante en la base de datos
+      // Buscar el estudiante en la base de datos por student_code
       const { data: studentData, error: studentError } = await supabase
         .from('students')
         .select('*')
@@ -46,7 +44,9 @@ const QRScanner = ({ onScan }: QRScannerProps) => {
         // Registrar asistencia
         const { error: attendanceError } = await supabase
           .from('attendance')
-          .insert([{ student_id: studentData.id }]);
+          .insert([
+            { student_id: studentData.id }
+          ]);
           
         if (attendanceError) {
           console.error('Error al registrar asistencia:', attendanceError);
@@ -64,19 +64,21 @@ const QRScanner = ({ onScan }: QRScannerProps) => {
           description: `Se ha registrado la asistencia de ${studentData.name}`,
         });
         
-        if (onScan) onScan(scannedData);
+        if (onScan) {
+          onScan(scannedData);
+        }
       } else {
         toast({
           title: "QR desconocido",
-          description: "El código QR no corresponde a ningún estudiante",
+          description: "El código QR escaneado no corresponde a ningún estudiante registrado",
           variant: "destructive"
         });
       }
     } catch (error) {
-      console.error('Error en el proceso:', error);
+      console.error('Error en el proceso de escaneo:', error);
       toast({
         title: "Error",
-        description: "Ocurrió un error al procesar el QR",
+        description: "Ocurrió un error al procesar el código QR",
         variant: "destructive"
       });
     }
@@ -84,7 +86,7 @@ const QRScanner = ({ onScan }: QRScannerProps) => {
   
   const handleError = (error: any) => {
     console.error('Error de cámara:', error);
-    setCameraError("Error al acceder a la cámara. Verifica los permisos.");
+    setCameraError("Error al acceder a la cámara. Por favor, verifica los permisos.");
     setScanning(false);
   };
 
@@ -97,6 +99,12 @@ const QRScanner = ({ onScan }: QRScannerProps) => {
     setScanning(false);
   };
 
+  useEffect(() => {
+    return () => {
+      stopScanner();
+    };
+  }, []);
+
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardContent className="p-6">
@@ -104,26 +112,37 @@ const QRScanner = ({ onScan }: QRScannerProps) => {
           <div className="relative w-64 h-64 mb-4 border-2 border-dashed border-gray-300 rounded-md overflow-hidden">
             {scanning ? (
               <div className="absolute inset-0 bg-gray-100">
-                <QrScanner
+                <QrReader
                   onResult={handleScan}
-                  onError={handleError}
-                  constraints={{ facingMode: "environment" }}
+                  className="w-full h-full"
+                  constraints={{
+                    facingMode: "environment"
+                  }}
                   videoStyle={{ objectFit: 'cover' }}
-                  scanDelay={300}
+                  scanDelay={500}
+                  videoId="qr-video"
                 />
                 <div className="absolute inset-0 pointer-events-none">
                   <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 border-2 border-kiddo-green rounded-lg"></div>
+                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 w-40 h-0.5 bg-kiddo-green animate-pulse"></div>
                 </div>
               </div>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
                 <Camera size={80} className="text-gray-400" />
                 <div className="absolute bottom-4 text-xs text-center text-gray-500 w-full px-2">
-                  {cameraError ? "Error de cámara" : "Presiona Iniciar Escaneo"}
+                  Haz clic en "Iniciar Escaneo" para activar la cámara
                 </div>
               </div>
             )}
           </div>
+          
+          {cameraError && (
+            <div className="mb-4 p-2 bg-red-50 text-red-600 rounded-md flex items-center">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              <span className="text-sm">{cameraError}</span>
+            </div>
+          )}
 
           <Button 
             onClick={scanning ? stopScanner : startScanner}
@@ -133,7 +152,7 @@ const QRScanner = ({ onScan }: QRScannerProps) => {
           </Button>
           
           <p className="mt-4 text-sm text-muted-foreground text-center">
-            Coloca el código QR frente a la cámara para registrar asistencia
+            Coloca el código QR del estudiante frente a la cámara para registrar la asistencia.
           </p>
         </div>
       </CardContent>
