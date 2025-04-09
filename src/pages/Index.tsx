@@ -1,251 +1,218 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { QrCode, Loader2 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import QRScanner from '@/components/qr/QRScanner';
-import WhatsAppNotification from '@/components/notifications/WhatsAppNotification';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle2, QrCode, History } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Database } from '@/integrations/supabase/types';
 
+// Define a clear interface for the Student type
 interface Student {
   id: string;
   student_code: string;
   name: string;
   grade?: string;
-  parent?: string | null;
-  phone?: string | null;
+  parent?: string;
+  phone?: string;
   photo_url?: string | null;
 }
 
 interface AttendanceRecord {
   id: string;
-  student: Student;
   check_in_time: string;
+  student_id: string;
+  students: Student;
 }
 
 const Index = () => {
-  const [lastScanned, setLastScanned] = useState<{
-    studentId: string;
-    timestamp: Date;
-    student: Student | null;
-  } | null>(null);
-  
+  const [showScanner, setShowScanner] = useState(false);
+  const [scannedStudentId, setScannedStudentId] = useState<string | null>(null);
+  const [scannedStudent, setScannedStudent] = useState<Student | null>(null);
   const [recentScans, setRecentScans] = useState<AttendanceRecord[]>([]);
-  
-  // Cargar los escaneos recientes al cargar la página
+  const [loading, setLoading] = useState(false);
+  const [fetchingScans, setFetchingScans] = useState(true);
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  // Fetch recent attendance scans
   useEffect(() => {
-    fetchRecentAttendance();
-  }, []);
-  
-  const fetchRecentAttendance = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('attendance')
-        .select(`
-          id,
-          check_in_time,
-          student_id,
-          students (*)
-        `)
-        .order('check_in_time', { ascending: false })
-        .limit(5);
-      
-      if (error) {
-        console.error('Error al obtener asistencias recientes:', error);
-        return;
-      }
-      
-      if (data) {
-        const formattedData = data.map(item => ({
-          id: item.id,
-          student: item.students as Student,
-          check_in_time: item.check_in_time
-        }));
+    const fetchRecentScans = async () => {
+      try {
+        setFetchingScans(true);
+        const { data, error } = await supabase
+          .from('attendance')
+          .select('id, check_in_time, student_id, students(*)')
+          .order('check_in_time', { ascending: false })
+          .limit(5);
+
+        if (error) throw error;
         
-        setRecentScans(formattedData);
+        // Type assertion to help TypeScript understand the structure
+        setRecentScans(data as AttendanceRecord[]);
+      } catch (error) {
+        console.error('Error fetching recent scans:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los registros recientes",
+          variant: "destructive",
+        });
+      } finally {
+        setFetchingScans(false);
       }
-    } catch (error) {
-      console.error('Error al procesar asistencias recientes:', error);
+    };
+
+    fetchRecentScans();
+  }, [toast, scannedStudentId]);
+
+  const handleScan = async (data: string | null) => {
+    if (data) {
+      try {
+        setLoading(true);
+        setScannedStudentId(data);
+        
+        // Fetch student data
+        const { data: studentData, error: studentError } = await supabase
+          .from('students')
+          .select('*')
+          .eq('id', data)
+          .single();
+        
+        if (studentError) {
+          throw new Error('Estudiante no encontrado');
+        }
+        
+        setScannedStudent(studentData as Student);
+        
+        // Register attendance
+        const { error: attendanceError } = await supabase
+          .from('attendance')
+          .insert([{ student_id: data }]);
+        
+        if (attendanceError) {
+          throw new Error('Error al registrar asistencia');
+        }
+        
+        toast({
+          title: "Asistencia registrada",
+          description: `${studentData.name} ha sido registrado exitosamente`,
+        });
+        
+      } catch (error) {
+        console.error('Error en el escaneo:', error);
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Error al procesar el código QR",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+        setShowScanner(false);
+      }
     }
   };
 
-  const handleScan = async (data: string) => {
-    console.log('QR Escaneado:', data);
-    
-    try {
-      // Buscar el estudiante por su código QR
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
-        .select('*')
-        .eq('student_code', data)
-        .single();
-      
-      if (studentError || !studentData) {
-        console.error('Error al buscar estudiante:', studentError);
-        return;
-      }
-      
-      // Actualizar estado con el último escaneo
-      setLastScanned({
-        studentId: data,
-        timestamp: new Date(),
-        student: studentData
-      });
-      
-      // Refrescar la lista de escaneos recientes
-      fetchRecentAttendance();
-      
-    } catch (error) {
-      console.error('Error al procesar escaneo:', error);
-    }
-  };
-  
-  const formatTime = (date: Date | string) => {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    return dateObj.toLocaleTimeString('es-ES', { 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('es-ES', { 
       hour: '2-digit', 
-      minute: '2-digit' 
+      minute: '2-digit',
+      hour12: true 
     });
-  };
-
-  // Function to generate avatar initials from name
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
   };
 
   return (
     <Layout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold">Escáner de Asistencia</h2>
-          <p className="text-muted-foreground">Escanea los códigos QR para registrar la asistencia</p>
+          <h2 className="text-3xl font-bold">Registro de Asistencia</h2>
+          <p className="text-muted-foreground">
+            Escanea el código QR del estudiante para registrar su asistencia
+          </p>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* QR Scanner section */}
-          <div className="space-y-6">
-            <QRScanner onScan={handleScan} />
-            
-            {lastScanned && lastScanned.student && (
-              <Alert className="bg-green-50 border-green-200">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <AlertTitle className="text-green-600 font-medium">¡Asistencia Registrada!</AlertTitle>
-                <AlertDescription className="text-green-700">
-                  <p><strong>{lastScanned.student.name}</strong> ha sido registrado exitosamente a las {formatTime(lastScanned.timestamp)}.</p>
-                </AlertDescription>
-              </Alert>
-            )}
-          </div>
-          
-          {/* Student info/notification section */}
-          <div className="space-y-6">
-            <Tabs defaultValue="student">
-              <TabsList className="w-full">
-                <TabsTrigger value="student" className="flex-1">
-                  <QrCode className="h-4 w-4 mr-2" /> Estudiante
-                </TabsTrigger>
-                <TabsTrigger value="history" className="flex-1">
-                  <History className="h-4 w-4 mr-2" /> Recientes
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="student" className="mt-4">
-                {lastScanned && lastScanned.student ? (
-                  <div className="space-y-6">
-                    <Card>
-                      <CardHeader>
-                        <div className="flex items-center space-x-4">
-                          <Avatar className="h-16 w-16 border-2 border-gray-200">
-                            <AvatarImage src={lastScanned.student.photo_url || undefined} alt={lastScanned.student.name} />
-                            <AvatarFallback>{getInitials(lastScanned.student.name)}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <CardTitle>{lastScanned.student.name}</CardTitle>
-                            <CardDescription>{lastScanned.student.grade}</CardDescription>
-                          </div>
+
+        {showScanner ? (
+          <Card>
+            <CardContent className="p-6">
+              <QRScanner onScan={handleScan} onCancel={() => setShowScanner(false)} />
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-6">
+            <Card className="overflow-hidden">
+              <CardContent className="p-6 flex flex-col items-center justify-center min-h-[300px]">
+                <QrCode className="h-16 w-16 text-muted-foreground mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Escanear Código QR</h3>
+                <p className="text-center text-muted-foreground mb-6">
+                  Escanea el código QR del estudiante para registrar su entrada o salida
+                </p>
+                <Button 
+                  size="lg" 
+                  className="bg-kiddo-blue hover:bg-blue-700"
+                  onClick={() => setShowScanner(true)}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Procesando...
+                    </>
+                  ) : (
+                    'Escanear Código QR'
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Escaneos Recientes</h3>
+              {fetchingScans ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+              ) : recentScans.length > 0 ? (
+                <div className="space-y-3">
+                  {recentScans.map((scan) => (
+                    <div 
+                      key={scan.id} 
+                      className="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm border"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
+                          {scan.students?.photo_url ? (
+                            <img 
+                              src={scan.students.photo_url} 
+                              alt={scan.students.name}
+                              className="h-full w-full object-cover" 
+                            />
+                          ) : (
+                            <span className="text-xs font-medium text-gray-500">
+                              {scan.students?.name?.charAt(0).toUpperCase() || '?'}
+                            </span>
+                          )}
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <span className="font-medium text-muted-foreground">ID:</span>
-                            <span>{lastScanned.student.student_code}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="font-medium text-muted-foreground">Representante:</span>
-                            <span>{lastScanned.student.parent}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="font-medium text-muted-foreground">Hora de registro:</span>
-                            <span>{formatTime(lastScanned.timestamp)}</span>
-                          </div>
+                        <div>
+                          <p className="font-medium">{scan.students?.name}</p>
+                          <p className="text-sm text-muted-foreground">{scan.students?.grade}</p>
                         </div>
-                      </CardContent>
-                    </Card>
-                    
-                    {/* WhatsApp notification component */}
-                    <WhatsAppNotification 
-                      student={lastScanned.student} 
-                      timestamp={lastScanned.timestamp}
-                      autoSend={false}
-                    />
-                  </div>
-                ) : (
-                  <Card>
-                    <CardContent className="py-10 text-center text-muted-foreground">
-                      <QrCode className="h-10 w-10 mx-auto mb-3 text-muted-foreground/60" />
-                      <p>Escanea un código QR para ver la información del estudiante</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-              <TabsContent value="history" className="mt-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Escaneos Recientes</CardTitle>
-                    <CardDescription>Últimos estudiantes registrados</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {recentScans.length > 0 ? (
-                      <div className="space-y-4">
-                        {recentScans.map((scan, index) => (
-                          <div key={index} className="flex items-center p-3 rounded-md border hover:bg-gray-50 transition-colors">
-                            <Avatar className="h-10 w-10 mr-3">
-                              <AvatarImage src={scan.student.photo_url || undefined} alt={scan.student.name} />
-                              <AvatarFallback>{getInitials(scan.student.name)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-grow">
-                              <p className="font-medium">{scan.student.name}</p>
-                              <div className="flex items-center text-sm text-muted-foreground">
-                                <span className="mr-2">{scan.student.grade}</span>
-                                <span>•</span>
-                                <span className="ml-2">ID: {scan.student.student_code}</span>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-medium">{formatTime(scan.check_in_time)}</p>
-                              <p className="text-xs text-muted-foreground">Hoy</p>
-                            </div>
-                          </div>
-                        ))}
                       </div>
-                    ) : (
-                      <p className="text-center py-8 text-muted-foreground">No hay escaneos recientes</p>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
+                      <div className="text-sm text-right">
+                        <p className="text-muted-foreground">Entrada</p>
+                        <p className="font-medium">{formatDate(scan.check_in_time)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No hay registros recientes
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </Layout>
   );

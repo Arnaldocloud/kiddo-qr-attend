@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -14,23 +14,20 @@ import {
   Pie,
   Cell
 } from 'recharts';
-
-// Mock data for attendance
-const attendanceData = [
-  { day: 'Lun', present: 45, absent: 5 },
-  { day: 'Mar', present: 48, absent: 2 },
-  { day: 'Mie', present: 47, absent: 3 },
-  { day: 'Jue', present: 44, absent: 6 },
-  { day: 'Vie', present: 50, absent: 0 },
-];
-
-const gradePieData = [
-  { name: '7mo Grado', value: 30, color: '#4361EE' },
-  { name: '8vo Grado', value: 25, color: '#3A0CA3' },
-  { name: '9no Grado', value: 20, color: '#F72585' },
-];
+import { supabase } from '@/integrations/supabase/client';
+import { Loader2 } from 'lucide-react';
 
 const Dashboard = () => {
+  // States for dashboard data
+  const [loading, setLoading] = useState(true);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [todayAttendance, setTodayAttendance] = useState({ present: 0, total: 0 });
+  const [weeklyAttendance, setWeeklyAttendance] = useState<{ day: string; present: number; absent: number; }[]>([]);
+  const [gradeDistribution, setGradeDistribution] = useState<{ name: string; value: number; color: string; }[]>([]);
+  
+  // Color palette for charts
+  const colors = ['#4361EE', '#3A0CA3', '#F72585', '#7209B7', '#4CC9F0'];
+  
   // Get current date
   const today = new Date();
   const formattedDate = today.toLocaleDateString('es-ES', {
@@ -42,6 +39,146 @@ const Dashboard = () => {
   
   // Capitalize first letter
   const capitalizedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+
+  // Get the start of today and end of today in ISO format
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  // Function to get the date for days of the week
+  const getDayLabel = (daysAgo: number) => {
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    return date.toLocaleDateString('es-ES', { weekday: 'short' });
+  };
+
+  // Initialize weekly attendance data
+  const initWeeklyData = () => {
+    return [
+      { day: getDayLabel(4), present: 0, absent: 0 },
+      { day: getDayLabel(3), present: 0, absent: 0 },
+      { day: getDayLabel(2), present: 0, absent: 0 },
+      { day: getDayLabel(1), present: 0, absent: 0 },
+      { day: getDayLabel(0), present: 0, absent: 0 }
+    ];
+  };
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        
+        // 1. Fetch total number of students
+        const { count: studentCount, error: countError } = await supabase
+          .from('students')
+          .select('*', { count: 'exact', head: true });
+        
+        if (countError) throw countError;
+        
+        setTotalStudents(studentCount || 0);
+        
+        // 2. Fetch today's attendance
+        const startOfToday = todayStart.toISOString();
+        const endOfToday = todayEnd.toISOString();
+        
+        const { data: todayAttendanceData, error: attendanceError } = await supabase
+          .from('attendance')
+          .select('student_id')
+          .gte('check_in_time', startOfToday)
+          .lte('check_in_time', endOfToday);
+        
+        if (attendanceError) throw attendanceError;
+        
+        // Get unique student IDs who attended today
+        const uniqueStudentsToday = new Set();
+        todayAttendanceData?.forEach(record => uniqueStudentsToday.add(record.student_id));
+        
+        setTodayAttendance({
+          present: uniqueStudentsToday.size,
+          total: studentCount || 0
+        });
+        
+        // 3. Fetch weekly attendance data
+        const weeklyData = initWeeklyData();
+        
+        // For each of the last 5 days
+        for (let i = 0; i < 5; i++) {
+          const dayStart = new Date();
+          dayStart.setDate(dayStart.getDate() - i);
+          dayStart.setHours(0, 0, 0, 0);
+          
+          const dayEnd = new Date(dayStart);
+          dayEnd.setHours(23, 59, 59, 999);
+          
+          const { data: dayAttendanceData } = await supabase
+            .from('attendance')
+            .select('student_id')
+            .gte('check_in_time', dayStart.toISOString())
+            .lte('check_in_time', dayEnd.toISOString());
+          
+          if (dayAttendanceData) {
+            const uniqueStudentsDay = new Set();
+            dayAttendanceData.forEach(record => uniqueStudentsDay.add(record.student_id));
+            
+            // Update the weekly data
+            weeklyData[4-i].present = uniqueStudentsDay.size;
+            weeklyData[4-i].absent = Math.max(0, (studentCount || 0) - uniqueStudentsDay.size);
+          }
+        }
+        
+        setWeeklyAttendance(weeklyData);
+        
+        // 4. Fetch grade distribution
+        const { data: studentsData, error: studentsError } = await supabase
+          .from('students')
+          .select('grade');
+        
+        if (studentsError) throw studentsError;
+        
+        // Count students by grade
+        const gradeCount: Record<string, number> = {};
+        
+        studentsData?.forEach(student => {
+          const grade = student.grade || 'No especificado';
+          if (gradeCount[grade]) {
+            gradeCount[grade]++;
+          } else {
+            gradeCount[grade] = 1;
+          }
+        });
+        
+        // Convert to array format for PieChart
+        const gradeData = Object.keys(gradeCount).map((grade, index) => ({
+          name: grade,
+          value: gradeCount[grade],
+          color: colors[index % colors.length]
+        }));
+        
+        setGradeDistribution(gradeData);
+        
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-kiddo-blue" />
+      </div>
+    );
+  }
+
+  // Calculate attendance percentage
+  const attendancePercentage = todayAttendance.total > 0 
+    ? Math.round((todayAttendance.present / todayAttendance.total) * 100) 
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -58,7 +195,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Total Estudiantes</p>
-              <h3 className="text-2xl font-bold">75</h3>
+              <h3 className="text-2xl font-bold">{totalStudents}</h3>
             </div>
           </CardContent>
         </Card>
@@ -70,7 +207,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Hoy</p>
-              <h3 className="text-2xl font-bold">50/50</h3>
+              <h3 className="text-2xl font-bold">{todayAttendance.present}/{todayAttendance.total}</h3>
             </div>
           </CardContent>
         </Card>
@@ -82,7 +219,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Asistencia</p>
-              <h3 className="text-2xl font-bold">100%</h3>
+              <h3 className="text-2xl font-bold">{attendancePercentage}%</h3>
             </div>
           </CardContent>
         </Card>
@@ -94,7 +231,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Ausencias</p>
-              <h3 className="text-2xl font-bold">0</h3>
+              <h3 className="text-2xl font-bold">{todayAttendance.total - todayAttendance.present}</h3>
             </div>
           </CardContent>
         </Card>
@@ -107,7 +244,7 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={attendanceData}>
+              <BarChart data={weeklyAttendance}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="day" />
                 <YAxis />
@@ -124,25 +261,31 @@ const Dashboard = () => {
             <CardTitle>Estudiantes por Grado</CardTitle>
           </CardHeader>
           <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={gradePieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={70}
-                  outerRadius={90}
-                  paddingAngle={5}
-                  dataKey="value"
-                  label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
-                >
-                  {gradePieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {gradeDistribution.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={gradeDistribution}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={90}
+                    paddingAngle={5}
+                    dataKey="value"
+                    label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {gradeDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-muted-foreground">No hay datos disponibles</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

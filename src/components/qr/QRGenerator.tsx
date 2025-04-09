@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Check, Clipboard, Download } from 'lucide-react';
+import { Check, Clipboard, Download, Printer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 
 interface QRGeneratorProps {
   studentId: string;
@@ -16,6 +17,7 @@ interface QRGeneratorProps {
 const QRGenerator = ({ studentId, studentName, photoUrl }: QRGeneratorProps) => {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
+  const cardRef = useRef<HTMLDivElement>(null);
 
   // Function to generate avatar initials from name
   const getInitials = (name: string) => {
@@ -107,8 +109,142 @@ const QRGenerator = ({ studentId, studentName, photoUrl }: QRGeneratorProps) => 
     }
   };
 
+  // New function to print the student ID card
+  const printStudentIDCard = () => {
+    if (!cardRef.current) return;
+    
+    const printContent = document.createElement('div');
+    printContent.className = 'student-id-card';
+    
+    // Create the student ID card layout
+    printContent.innerHTML = `
+      <style>
+        @media print {
+          body { margin: 0; padding: 0; }
+          .student-id-card {
+            width: 3.375in;
+            height: 2.125in;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: none;
+            page-break-inside: avoid;
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+          }
+          .header {
+            background-color: #4361EE;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+          }
+          .content {
+            display: flex;
+            padding: 15px;
+          }
+          .photo {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: 2px solid #ddd;
+            overflow: hidden;
+            background-color: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+          .photo-fallback {
+            font-size: 24px;
+            font-weight: bold;
+            color: #555;
+          }
+          .info {
+            flex: 1;
+            padding-left: 15px;
+          }
+          .name {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 5px;
+          }
+          .id-number, .grade {
+            font-size: 12px;
+            margin-bottom: 3px;
+            color: #555;
+          }
+          .qr-code {
+            display: flex;
+            justify-content: center;
+            padding-bottom: 10px;
+          }
+        }
+      </style>
+      <div class="student-id-card">
+        <div class="header">CARNET ESTUDIANTIL</div>
+        <div class="content">
+          <div class="photo">
+            ${photoUrl 
+              ? `<img src="${photoUrl}" alt="${studentName}" />` 
+              : `<div class="photo-fallback">${getInitials(studentName)}</div>`
+            }
+          </div>
+          <div class="info">
+            <div class="name">${studentName}</div>
+            <div class="id-number">ID: ${studentId}</div>
+          </div>
+        </div>
+        <div class="qr-code">
+          <svg width="100" height="100">${document.getElementById('qr-' + studentId)?.innerHTML || ''}</svg>
+        </div>
+      </div>
+    `;
+    
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast({
+        title: "Error",
+        description: "No se pudo abrir la ventana de impresión. Verifica que los popups estén habilitados.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    printWindow.document.open();
+    printWindow.document.write(printContent.outerHTML);
+    printWindow.document.close();
+    
+    // Wait for content to load before printing
+    printWindow.onload = () => {
+      printWindow.focus();
+      printWindow.print();
+      
+      // Close the print window after printing (or after a delay if print was canceled)
+      setTimeout(() => {
+        try {
+          printWindow.close();
+        } catch (e) {
+          console.error('Error closing print window:', e);
+        }
+      }, 1000);
+    };
+    
+    toast({
+      title: "Imprimiendo carnet",
+      description: `El carnet de ${studentName} se está imprimiendo`
+    });
+  };
+
   return (
-    <Card className="w-full">
+    <Card className="w-full" ref={cardRef}>
       <CardHeader>
         <CardTitle className="text-center">Código QR para {studentName}</CardTitle>
       </CardHeader>
@@ -134,6 +270,10 @@ const QRGenerator = ({ studentId, studentName, photoUrl }: QRGeneratorProps) => 
           <Button variant="outline" className="flex items-center gap-1" onClick={copyQRCode}>
             {copied ? <Check size={16} /> : <Clipboard size={16} />}
             {copied ? "Copiado" : "Copiar"}
+          </Button>
+          <Button variant="outline" className="flex items-center gap-1" onClick={printStudentIDCard}>
+            <Printer size={16} />
+            Imprimir Carnet
           </Button>
           <Button className="flex items-center gap-1 bg-kiddo-blue hover:bg-blue-700" onClick={downloadQRCode}>
             <Download size={16} />
