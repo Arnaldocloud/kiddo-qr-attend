@@ -10,7 +10,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 interface QRGeneratorProps {
   studentId: string;
   studentName: string;
-  photoUrl?: string;
+  photoUrl?: string | null;
 }
 
 const QRGenerator = ({ studentId, studentName, photoUrl }: QRGeneratorProps) => {
@@ -28,51 +28,81 @@ const QRGenerator = ({ studentId, studentName, photoUrl }: QRGeneratorProps) => 
   };
 
   const downloadQRCode = () => {
-    const canvas = document.getElementById('qr-' + studentId) as HTMLCanvasElement;
-    if (canvas) {
-      const pngUrl = canvas
-        .toDataURL("image/png")
-        .replace("image/png", "image/octet-stream");
+    const qrCodeElement = document.getElementById('qr-' + studentId);
+    if (!qrCodeElement) return;
+    
+    const svgData = new XMLSerializer().serializeToString(qrCodeElement);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx?.drawImage(img, 0, 0);
       
+      const pngFile = canvas.toDataURL("image/png");
       const downloadLink = document.createElement("a");
-      downloadLink.href = pngUrl;
       downloadLink.download = `qr-${studentName.replace(/\s+/g, '-').toLowerCase()}.png`;
-      document.body.appendChild(downloadLink);
+      downloadLink.href = pngFile;
       downloadLink.click();
-      document.body.removeChild(downloadLink);
       
       toast({
         title: "QR descargado",
         description: `El código QR de ${studentName} ha sido descargado`,
       });
-    }
+    };
+    
+    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
   };
 
-  const copyQRCode = () => {
-    const canvas = document.getElementById('qr-' + studentId) as HTMLCanvasElement;
-    if (canvas) {
-      canvas.toBlob(function(blob) {
-        if (blob) {
-          navigator.clipboard.write([
-            new ClipboardItem({
-              'image/png': blob
-            })
-          ]).then(() => {
-            setCopied(true);
-            toast({
-              title: "QR copiado",
-              description: `El código QR de ${studentName} ha sido copiado al portapapeles`
-            });
-            setTimeout(() => setCopied(false), 2000);
-          }).catch(err => {
-            console.error('Error al copiar: ', err);
-            toast({
-              title: "Error",
-              description: "No se pudo copiar el código QR",
-              variant: "destructive"
-            });
-          });
-        }
+  const copyQRCode = async () => {
+    try {
+      const qrCodeElement = document.getElementById('qr-' + studentId);
+      if (!qrCodeElement) return;
+      
+      const svgData = new XMLSerializer().serializeToString(qrCodeElement);
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+      
+      img.onload = async () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx?.drawImage(img, 0, 0);
+        
+        canvas.toBlob(async (blob) => {
+          if (blob) {
+            try {
+              // Usar la API moderna de portapapeles
+              const data = [new ClipboardItem({ [blob.type]: blob })];
+              await navigator.clipboard.write(data);
+              
+              setCopied(true);
+              toast({
+                title: "QR copiado",
+                description: `El código QR de ${studentName} ha sido copiado al portapapeles`
+              });
+              setTimeout(() => setCopied(false), 2000);
+            } catch (err) {
+              console.error('Error al copiar: ', err);
+              toast({
+                title: "Error",
+                description: "No se pudo copiar el código QR",
+                variant: "destructive"
+              });
+            }
+          }
+        });
+      };
+      
+      img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+    } catch (error) {
+      console.error('Error al copiar QR:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo copiar el código QR",
+        variant: "destructive"
       });
     }
   };
@@ -85,7 +115,7 @@ const QRGenerator = ({ studentId, studentName, photoUrl }: QRGeneratorProps) => 
       <CardContent className="flex flex-col items-center justify-center">
         <div className="mb-4">
           <Avatar className="h-24 w-24 mx-auto border-2 border-gray-200">
-            <AvatarImage src={photoUrl} alt={studentName} />
+            <AvatarImage src={photoUrl || undefined} alt={studentName} />
             <AvatarFallback>{getInitials(studentName)}</AvatarFallback>
           </Avatar>
         </div>
@@ -98,14 +128,6 @@ const QRGenerator = ({ studentId, studentName, photoUrl }: QRGeneratorProps) => 
             fgColor={"#000000"}
             level={"H"}
             includeMargin={true}
-            imageSettings={{
-              src: "/favicon.ico",
-              x: undefined,
-              y: undefined,
-              height: 24,
-              width: 24,
-              excavate: true,
-            }}
           />
         </div>
         <div className="flex gap-2 mt-4">

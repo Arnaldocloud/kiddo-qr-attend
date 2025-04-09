@@ -9,15 +9,16 @@ import { CheckCircle2, QrCode, History } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
+import { Database } from '@/integrations/supabase/types';
 
 interface Student {
   id: string;
   student_code: string;
   name: string;
   grade?: string;
-  parent?: string;
-  phone?: string;
-  photo_url?: string;
+  parent?: string | null;
+  phone?: string | null;
+  photo_url?: string | null;
 }
 
 interface AttendanceRecord {
@@ -163,7 +164,7 @@ const Index = () => {
                       <CardHeader>
                         <div className="flex items-center space-x-4">
                           <Avatar className="h-16 w-16 border-2 border-gray-200">
-                            <AvatarImage src={lastScanned.student.photo_url} alt={lastScanned.student.name} />
+                            <AvatarImage src={lastScanned.student.photo_url || undefined} alt={lastScanned.student.name} />
                             <AvatarFallback>{getInitials(lastScanned.student.name)}</AvatarFallback>
                           </Avatar>
                           <div>
@@ -218,7 +219,7 @@ const Index = () => {
                         {recentScans.map((scan, index) => (
                           <div key={index} className="flex items-center p-3 rounded-md border hover:bg-gray-50 transition-colors">
                             <Avatar className="h-10 w-10 mr-3">
-                              <AvatarImage src={scan.student.photo_url} alt={scan.student.name} />
+                              <AvatarImage src={scan.student.photo_url || undefined} alt={scan.student.name} />
                               <AvatarFallback>{getInitials(scan.student.name)}</AvatarFallback>
                             </Avatar>
                             <div className="flex-grow">
