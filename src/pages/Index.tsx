@@ -138,7 +138,7 @@ const Index = () => {
             <CardContent className="p-6">
               <QRScanner 
                 onScan={handleScan} 
-                // Remove the onCancel prop since it's not in the component's props
+                onCancel={() => setShowScanner(false)}
               />
             </CardContent>
           </Card>
