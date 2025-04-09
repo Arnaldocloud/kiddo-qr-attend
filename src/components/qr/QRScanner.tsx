@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { QrCode, AlertCircle, Camera } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -70,12 +69,11 @@ const QRScanner = ({ onScan, onCancel }: QRScannerProps) => {
         });
         
         if (onScan) {
-          onScan(scannedData);
+          onScan(studentData.id);
 
           setTimeout(() => {
             stopScanner(); // Detiene el escáner
           }, 1000);
-          
         }
       } else {
         toast({
