@@ -8,10 +8,11 @@ import { QrReader } from 'react-qr-reader';
 import { supabase } from '@/integrations/supabase/client';
 
 interface QRScannerProps {
-  onScan?: (data: string) => void;
+  onScan: (data: string) => void;
+  onCancel?: () => void; // Make onCancel optional
 }
 
-const QRScanner = ({ onScan }: QRScannerProps) => {
+const QRScanner = ({ onScan, onCancel }: QRScannerProps) => {
   const [scanning, setScanning] = useState(false);
   const [hasScanned, setHasScanned] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -107,6 +108,11 @@ const QRScanner = ({ onScan }: QRScannerProps) => {
   
   const stopScanner = () => {
     setScanning(false);
+    
+    // Call onCancel if provided
+    if (onCancel) {
+      onCancel();
+    }
   };
 
   useEffect(() => {
